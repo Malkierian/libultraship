@@ -59,13 +59,20 @@ bool ResourceManager::DidLoadSuccessfully() {
 }
 
 std::shared_ptr<File> ResourceManager::LoadFileProcess(const std::string& filePath) {
-    auto file = mArchive->LoadFile(filePath, true);
-    if (file != nullptr) {
-        SPDLOG_TRACE("Loaded File {} on ResourceManager", file->Path);
-    } else {
-        SPDLOG_TRACE("Could not load File {} in ResourceManager", filePath);
+    try {
+        auto file = mArchive->LoadFile(filePath, true);
+        if (file != nullptr) {
+            SPDLOG_TRACE("Loaded File {} on ResourceManager", file->Path);
+        } else {
+            SPDLOG_TRACE("Could not load File {} in ResourceManager", filePath);
+        }
+        return file;
+    } catch (const std::exception& e) {
+        SPDLOG_ERROR("Caught std::exception in LoadFileProcess, loading file {}. Exception: {}", filePath, e.what());
+    } catch (...) {
+        SPDLOG_ERROR("Caught unknown exception in LoadFileProcess, loading file {}.", filePath);
     }
-    return file;
+    return nullptr;
 }
 
 std::shared_ptr<IResource> ResourceManager::LoadResourceProcess(const std::string& filePath, bool loadExact) {
@@ -74,79 +81,85 @@ std::shared_ptr<IResource> ResourceManager::LoadResourceProcess(const std::strin
         const auto newFilePath = filePath.substr(7);
         return LoadResourceProcess(newFilePath);
     }
+    try {
+        // Attempt to load the alternate version of the asset, if we fail then we continue trying to load the standard
+        // asset.
+        if (!loadExact && CVarGetInteger("gAltAssets", 0) && !filePath.starts_with(IResource::gAltAssetPrefix)) {
+            const auto altPath = IResource::gAltAssetPrefix + filePath;
+            auto altResource = LoadResourceProcess(altPath, loadExact);
 
-    // Attempt to load the alternate version of the asset, if we fail then we continue trying to load the standard
-    // asset.
-    if (!loadExact && CVarGetInteger("gAltAssets", 0) && !filePath.starts_with(IResource::gAltAssetPrefix)) {
-        const auto altPath = IResource::gAltAssetPrefix + filePath;
-        auto altResource = LoadResourceProcess(altPath, loadExact);
-
-        if (altResource != nullptr) {
-            return altResource;
-        }
-    }
-
-    // While waiting in the queue, another thread could have loaded the resource.
-    // In a last attempt to avoid doing work that will be discarded, let's check if the cached version exists.
-    auto cacheLine = CheckCache(filePath, loadExact);
-    auto cachedResource = GetCachedResource(cacheLine);
-    if (cachedResource != nullptr) {
-        return cachedResource;
-    }
-
-    // Check for resource load errors which can indicate an alternate asset.
-    // If we are attempting to load an alternate asset, we can return null
-    if (!loadExact && CVarGetInteger("gAltAssets", 0) && filePath.starts_with(IResource::gAltAssetPrefix)) {
-        if (std::holds_alternative<ResourceLoadError>(cacheLine)) {
-            try {
-                // If we have attempted to cache an alternate asset, but failed, we return nullptr and rely on the
-                // calling function to return a regular asset. If we have NOT attempted load already, attempt the load.
-                auto loadError = std::get<ResourceLoadError>(cacheLine);
-                if (loadError != ResourceLoadError::NotCached) {
-                    return nullptr;
-                }
-            } catch (std::bad_variant_access const& e) {
-                // Ignore the exception. This should never happen. The last check should've returned the resource.
+            if (altResource != nullptr) {
+                return altResource;
             }
         }
-    }
-
-    // Get the file from the OTR
-    auto file = LoadFileProcess(filePath);
-    if (file == nullptr) {
-        SPDLOG_TRACE("Failed to load resource file at path {}", filePath);
-    }
-
-    // Transform the raw data into a resource
-    auto resource = GetResourceLoader()->LoadResource(file);
-
-    // Another thread could have loaded the resource while we were processing, so we want to check before setting to
-    // the cache.
-    cachedResource = GetCachedResource(filePath, true);
-    {
-        const std::lock_guard<std::mutex> lock(mMutex);
-
+    
+        // While waiting in the queue, another thread could have loaded the resource.
+        // In a last attempt to avoid doing work that will be discarded, let's check if the cached version exists.
+        auto cacheLine = CheckCache(filePath, loadExact);
+        auto cachedResource = GetCachedResource(cacheLine);
         if (cachedResource != nullptr) {
-            // If another thread has already loaded this resource, discard the work we already did and return from
-            // cache.
-            resource = cachedResource;
+            return cachedResource;
+        }
+    
+    
+        // Check for resource load errors which can indicate an alternate asset.
+        // If we are attempting to load an alternate asset, we can return null
+        if (!loadExact && CVarGetInteger("gAltAssets", 0) && filePath.starts_with(IResource::gAltAssetPrefix)) {
+            if (std::holds_alternative<ResourceLoadError>(cacheLine)) {
+                try {
+                    // If we have attempted to cache an alternate asset, but failed, we return nullptr and rely on the
+                    // calling function to return a regular asset. If we have NOT attempted load already, attempt the load.
+                    auto loadError = std::get<ResourceLoadError>(cacheLine);
+                    if (loadError != ResourceLoadError::NotCached) {
+                        return nullptr;
+                    }
+                } catch (std::bad_variant_access const& e) {
+                    // Ignore the exception. This should never happen. The last check should've returned the resource.
+                }
+            }
         }
 
-        // Set the cache to the loaded resource
+        // Get the file from the OTR
+        auto file = LoadFileProcess(filePath);
+        if (file == nullptr) {
+            SPDLOG_TRACE("Failed to load resource file at path {}", filePath);
+        }
+
+        // Transform the raw data into a resource
+        auto resource = GetResourceLoader()->LoadResource(file);
+
+        // Another thread could have loaded the resource while we were processing, so we want to check before setting to
+        // the cache.
+        cachedResource = GetCachedResource(filePath, true);
+        {
+            const std::lock_guard<std::mutex> lock(mMutex);
+
+            if (cachedResource != nullptr) {
+                // If another thread has already loaded this resource, discard the work we already did and return from
+                // cache.
+                resource = cachedResource;
+            }
+
+            // Set the cache to the loaded resource
+            if (resource != nullptr) {
+                mResourceCache[filePath] = resource;
+            } else {
+                mResourceCache[filePath] = ResourceLoadError::NotFound;
+            }
+        }
+
         if (resource != nullptr) {
-            mResourceCache[filePath] = resource;
+            SPDLOG_TRACE("Loaded Resource {} on ResourceManager", filePath);
         } else {
-            mResourceCache[filePath] = ResourceLoadError::NotFound;
+            SPDLOG_TRACE("Resource load FAILED {} on ResourceManager", filePath);
         }
-    }
 
-    if (resource != nullptr) {
-        SPDLOG_TRACE("Loaded Resource {} on ResourceManager", filePath);
-    } else {
-        SPDLOG_TRACE("Resource load FAILED {} on ResourceManager", filePath);
+        return resource;
+    } catch (const std::exception& e) {
+        SPDLOG_ERROR("Caught std::exception in LoadResourceProcess, GetCachedResource; loading file {}. Exception: {}", filePath, e.what());
+    } catch (...) {
+        SPDLOG_ERROR("Caught unknown exception in LoadResourceProcess, GetCachedResource; loading file {}.", filePath);
     }
-
-    return resource;
 }
 
 std::shared_future<std::shared_ptr<File>> ResourceManager::LoadFileAsync(const std::string& filePath, bool priority) {
