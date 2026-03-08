@@ -838,10 +838,7 @@ void Interpreter::ImportTextureCi4(int tile, bool importReplacement) {
 
     const uint8_t* palette;
 
-    if (palIdx > 7)
-        palette = mRdp->palettes[palIdx / 8]; // 16 pixel entries, 16 bits each
-    else
-        palette = mRdp->palettes[palIdx / 8] + (palIdx % 8) * 16 * 2;
+    palette = mRdp->palettes[palIdx / 8] + (palIdx % 8) * 16 * 2;
 
     uint32_t baseLineSizeBytes;
     if (lineSizeBytes != sizeBytes && lineSizeBytes > 0) {
@@ -2216,13 +2213,38 @@ void Interpreter::GfxDpSetTileSize(uint8_t tile, uint16_t uls, uint16_t ult, uin
 void Interpreter::GfxDpLoadTlut(uint8_t tile, uint32_t high_index) {
     SUPPORT_CHECK(mRdp->texture_to_load.siz == G_IM_SIZ_16b);
 
-    if (mRdp->texture_tile[tile].tmem == 256) {
-        mRdp->palettes[0] = mRdp->texture_to_load.addr;
-        if (high_index == 255) {
-            mRdp->palettes[1] = mRdp->texture_to_load.addr + 2 * 128;
+    uint16_t tmem = mRdp->texture_tile[tile].tmem;
+    const uint8_t* src = mRdp->texture_to_load.addr;
+    uint32_t entryCount = high_index + 1;
+    uint32_t byteCount = entryCount * 2;
+
+    if (tmem >= 256) {
+        // N64 TMEM palette area starts at tmem word 256. Each CI4 palette = 16 entries = 16 tmem words.
+        uint32_t paletteByteOffset = (tmem - 256) * 2;
+
+        if (paletteByteOffset < 256) {
+            // Palettes 0-7 range
+            uint32_t copyLen = (paletteByteOffset + byteCount <= 256) ? byteCount : (256 - paletteByteOffset);
+            memcpy(mRdp->palette_staging[0] + paletteByteOffset, src, copyLen);
+            mRdp->palettes[0] = mRdp->palette_staging[0];
+        } else {
+            // Palettes 8-15 range
+            uint32_t offset = paletteByteOffset - 256;
+            uint32_t copyLen = (offset + byteCount <= 256) ? byteCount : (256 - offset);
+            memcpy(mRdp->palette_staging[1] + offset, src, copyLen);
+            mRdp->palettes[1] = mRdp->palette_staging[1];
+        }
+
+        // CI8: full 256-entry palette spanning both halves
+        if (high_index == 255 && paletteByteOffset == 0) {
+            memcpy(mRdp->palette_staging[0], src, 256);
+            memcpy(mRdp->palette_staging[1], src + 256, 256);
+            mRdp->palettes[0] = mRdp->palette_staging[0];
+            mRdp->palettes[1] = mRdp->palette_staging[1];
         }
     } else {
-        mRdp->palettes[1] = mRdp->texture_to_load.addr;
+        // tmem < 256: non-standard location, fall back to direct pointer
+        mRdp->palettes[1] = src;
     }
 }
 
