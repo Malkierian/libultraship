@@ -18,7 +18,6 @@
 #include "fast/resource/type/Texture.h"
 #include "ship/resource/Resource.h"
 
-// TODO figure out why changing these to 640x480 makes the game only render in a quarter of the window
 #define SCREEN_WIDTH 320
 #define SCREEN_HEIGHT 240
 
@@ -257,6 +256,10 @@ struct RSP {
 
 struct RDP {
     const uint8_t* palettes[2];
+    // CI4 palette staging buffer: N64 TMEM holds up to 16 CI4 palettes (16 entries x 2 bytes each = 32 bytes per
+    // palette). palettes[0] covers indices 0-7 (256 bytes), palettes[1] covers 8-15 (256 bytes). GfxDpLoadTlut copies
+    // TLUT data here at the correct offset so multi-palette CI4 models work.
+    uint8_t palette_staging[2][256];
     struct {
         const uint8_t* addr;
         uint8_t siz;
@@ -517,6 +520,12 @@ class Interpreter {
     std::vector<std::string> shader_ids;
     int mInterpolationIndex;
     int mInterpolationIndexTarget;
+
+    // When true, GfxDpSetTile will derive loaded_texture[1] from loaded_texture[0]
+    // for tiles at tmem != 0 when no separate texture has been loaded there.
+    // Needed for games that load a single texture block at TMEM 0 and reference
+    // sub-regions via tile descriptors at different TMEM offsets.
+    bool mDeriveTmemFromLoadedTexture{};
 };
 
 void gfx_set_target_ucode(UcodeHandlers ucode);
