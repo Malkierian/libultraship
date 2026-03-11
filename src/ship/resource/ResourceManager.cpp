@@ -426,8 +426,8 @@ bool ResourceManager::WriteResource(const ResourceIdentifier& identifier, const 
 bool ResourceManager::OtrSignatureCheck(const char* fileName) {
     // Byte-by-byte compare with short-circuit evaluation. fileName may point
     // to an arbitrary address (e.g. a raw texture pointer), so strncmp is unsafe.
-    return fileName[0] == '_' && fileName[1] == '_' && fileName[2] == 'O' &&
-           fileName[3] == 'T' && fileName[4] == 'R' && fileName[5] == '_' && fileName[6] == '_';
+    return fileName[0] == '_' && fileName[1] == '_' && fileName[2] == 'O' && fileName[3] == 'T' && fileName[4] == 'R' &&
+           fileName[5] == '_' && fileName[6] == '_';
 }
 
 bool ResourceManager::IsAltAssetsEnabled() {

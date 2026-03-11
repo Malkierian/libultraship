@@ -1074,12 +1074,12 @@ void Interpreter::ImportTexture(int i, int tile, bool importReplacement) {
     }
 
     bool cached = TextureCacheLookup(i, key);
-    if (cached) return;
+    if (cached)
+        return;
 
     // Guard against zero-sized textures from raw N64 sprite data that
     // would cause divide-by-zero or D3D11/OpenGL errors in UploadTexture.
-    if (mRdp->texture_tile[tile].line_size_bytes == 0 ||
-        mRdp->loaded_texture[tmemIdex].size_bytes == 0 ||
+    if (mRdp->texture_tile[tile].line_size_bytes == 0 || mRdp->loaded_texture[tmemIdex].size_bytes == 0 ||
         origAddr == nullptr) {
         return;
     }
@@ -1713,10 +1713,8 @@ void Interpreter::GfxSpTri1(uint8_t vtx1_idx, uint8_t vtx2_idx, uint8_t vtx3_idx
             // Use the same line_size as the Import functions for UV normalization.
             // When loaded_texture has real per-line info, use it. Otherwise fall back
             // to TMEM stride (texture_tile).
-            uint32_t loaded_line_size =
-                mRdp->loaded_texture[mRdp->texture_tile[tile].tmem_index].line_size_bytes;
-            uint32_t loaded_size =
-                mRdp->loaded_texture[mRdp->texture_tile[tile].tmem_index].size_bytes;
+            uint32_t loaded_line_size = mRdp->loaded_texture[mRdp->texture_tile[tile].tmem_index].line_size_bytes;
+            uint32_t loaded_size = mRdp->loaded_texture[mRdp->texture_tile[tile].tmem_index].size_bytes;
             uint32_t line_size;
             if (loaded_line_size != loaded_size && loaded_line_size > 0) {
                 line_size = loaded_line_size;
@@ -2184,8 +2182,8 @@ void Interpreter::GfxDpSetTile(uint8_t fmt, uint32_t siz, uint32_t line, uint32_
     // When enabled, derive loaded_texture[1] from loaded_texture[0] for tiles at
     // tmem != 0 that have no separately loaded texture. This supports games that load
     // a single texture block at TMEM 0 and reference sub-regions via tile TMEM offsets.
-    if (mDeriveTmemFromLoadedTexture &&
-        tmem != 0 && mRdp->loaded_texture[1].addr == nullptr && mRdp->loaded_texture[0].addr != nullptr) {
+    if (mDeriveTmemFromLoadedTexture && tmem != 0 && mRdp->loaded_texture[1].addr == nullptr &&
+        mRdp->loaded_texture[0].addr != nullptr) {
         mRdp->loaded_texture[1] = mRdp->loaded_texture[0];
         mRdp->loaded_texture[1].addr += tmem * 8; // tmem is in 64-bit words
         uint32_t tmemBytes = tmem * 8;
@@ -4409,8 +4407,8 @@ static void gfx_step() {
         // OTR filepath handlers expect w1 to be a valid __OTR__ string pointer.
         // If w1 is not a valid OTR path, skip to avoid crashing in strlen/strncmp.
         if (opcode == OTR_G_VTX_OTR_FILEPATH || opcode == OTR_G_SETTIMG_OTR_FILEPATH ||
-            opcode == OTR_G_DL_OTR_FILEPATH || opcode == OTR_G_PUSHCD ||
-            opcode == OTR_G_MTX_OTR_FILEPATH || opcode == OTR_G_LOAD_SHADER) {
+            opcode == OTR_G_DL_OTR_FILEPATH || opcode == OTR_G_PUSHCD || opcode == OTR_G_MTX_OTR_FILEPATH ||
+            opcode == OTR_G_LOAD_SHADER) {
             if (!gfx_check_image_signature((const char*)cmd->words.w1)) {
                 ++g_exec_stack.currCmd();
                 return;
