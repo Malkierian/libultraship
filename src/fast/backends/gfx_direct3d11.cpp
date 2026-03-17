@@ -1055,7 +1055,6 @@ void GfxRenderingAPIDX11::ReadFramebufferToCPU(int fb_id, uint32_t width, uint32
     ThrowIfFailed(mContext->Map(mReadbackStaging.Get(), 0, D3D11_MAP_READ, 0, &resource));
 
     if (!resource.pData) {
-        staging->Release();
         return;
     }
 
@@ -1078,7 +1077,6 @@ void GfxRenderingAPIDX11::ReadFramebufferToCPU(int fb_id, uint32_t width, uint32
 
     // Cleanup
     mContext->Unmap(mReadbackStaging.Get(), 0);
-    staging->Release();
 }
 
 void GfxRenderingAPIDX11::SetTextureFilter(FilteringMode mode) {
