@@ -30,6 +30,12 @@
 #endif
 
 namespace Ship {
+
+Logging::Logging(){};
+Logging::~Logging() {
+    spdlog::shutdown();
+}
+
 std::weak_ptr<Context> Context::mContext;
 
 std::shared_ptr<Context> Context::GetInstance() {
@@ -58,7 +64,7 @@ Context::~Context() {
     mKeystore = nullptr;
     GetConfig()->Save();
     mConfig = nullptr;
-    spdlog::shutdown();
+    mLogging = nullptr;
 }
 
 std::shared_ptr<Context>
@@ -102,6 +108,8 @@ Context::Context(std::string name, std::string shortName, std::string configFile
 bool Context::Init(const std::vector<std::string>& archivePaths, const std::unordered_set<uint32_t>& validHashes,
                    uint32_t reservedThreadCount, AudioSettings audioSettings, std::shared_ptr<Window> window,
                    std::shared_ptr<ControlDeck> controlDeck) {
+
+    mLogging = std::shared_ptr<Logging>();
     return InitLogging() && InitConfiguration() && InitConsoleVariables() &&
            InitResourceManager(archivePaths, validHashes, reservedThreadCount) && InitControlDeck(controlDeck) &&
            InitCrashHandler() && InitConsole() && InitWindow(window) && InitAudio(audioSettings) && InitGfxDebugger() &&
