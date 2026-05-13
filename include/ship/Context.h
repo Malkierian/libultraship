@@ -79,6 +79,7 @@ class Context {
     bool InitAudio(AudioSettings settings);
     bool InitGfxDebugger();
     bool InitConsole();
+    bool InitLoggingTest();
     bool InitWindow(std::shared_ptr<Window> window = nullptr);
     bool InitFileDropMgr();
 

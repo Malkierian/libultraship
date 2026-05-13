@@ -24,6 +24,20 @@
 #endif
 
 namespace Ship {
+
+class Logging {
+    Logging();
+    ~Logging() {
+        int i = 1+2;
+        spdlog::shutdown();
+    }
+};
+std::shared_ptr<Logging> mLogging;
+bool Context::InitLoggingTest() {
+    mLogging = std::shared_ptr<Logging>();
+    return true;
+}
+
 std::weak_ptr<Context> Context::mContext;
 
 std::shared_ptr<Context> Context::GetInstance() {
@@ -44,7 +58,7 @@ Context::~Context() {
     mConsoleVariables = nullptr;
     GetConfig()->Save();
     mConfig = nullptr;
-    spdlog::shutdown();
+    mLogging = nullptr;
 }
 
 std::shared_ptr<Context>
@@ -91,7 +105,7 @@ bool Context::Init(const std::vector<std::string>& archivePaths, const std::unor
     return InitLogging() && InitConfiguration() && InitConsoleVariables() &&
            InitResourceManager(archivePaths, validHashes, reservedThreadCount) && InitControlDeck(controlDeck) &&
            InitCrashHandler() && InitConsole() && InitWindow(window) && InitAudio(audioSettings) && InitGfxDebugger() &&
-           InitFileDropMgr();
+           InitFileDropMgr() && InitLoggingTest();
 }
 
 bool Context::InitLogging(spdlog::level::level_enum debugBuildLogLevel,
