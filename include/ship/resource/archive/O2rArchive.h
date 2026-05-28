@@ -27,6 +27,9 @@ class O2rArchive final : virtual public Archive {
     std::shared_ptr<File> LoadFile(const std::string& filePath);
     std::shared_ptr<File> LoadFile(uint64_t hash);
 
+  protected:
+      void IndexFile(const std::string& filePath) override;
+
   private:
     zip_t* mZipArchive;
 };

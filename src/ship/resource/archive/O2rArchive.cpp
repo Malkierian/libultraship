@@ -148,4 +148,13 @@ bool O2rArchive::WriteFile(const std::string& filePath, const std::vector<uint8_
     return true;
 }
 
+void O2rArchive::IndexFile(const std::string& filePath) {
+    if (filePath.length() > 5 && filePath.substr(filePath.length() - 5) == ".meta") {
+        Archive::IndexFile(filePath.substr(0, filePath.length() - 5));
+        return;
+    }
+
+    Archive::IndexFile(filePath);
+}
+
 } // namespace Ship

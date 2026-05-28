@@ -38,6 +38,9 @@ class ResourceLoader {
                                  uint32_t type, uint32_t version);
 
     uint32_t GetResourceType(const std::string& type);
+    static std::shared_ptr<ResourceInitData> CreateDefaultResourceInitData();
+    std::shared_ptr<BinaryReader> CreateBinaryReader(std::shared_ptr<File> fileToLoad,
+        std::shared_ptr<ResourceInitData> initData);
 
   protected:
     void RegisterGlobalResourceFactories();
@@ -45,7 +48,6 @@ class ResourceLoader {
     std::shared_ptr<ResourceFactory> GetFactory(uint32_t format, std::string typeName, uint32_t version);
     std::shared_ptr<ResourceInitData> ReadResourceInitData(const std::string& filePath,
                                                            std::shared_ptr<File> metaFileToLoad);
-    static std::shared_ptr<ResourceInitData> CreateDefaultResourceInitData();
     std::shared_ptr<ResourceInitData> ReadResourceInitDataLegacy(const std::string& filePath,
                                                                  std::shared_ptr<File> fileToLoad);
     static std::shared_ptr<ResourceInitData> ReadResourceInitDataBinary(const std::string& filePath,
@@ -54,8 +56,6 @@ class ResourceLoader {
                                                                      std::shared_ptr<tinyxml2::XMLDocument> document);
     static std::shared_ptr<ResourceInitData> ReadResourceInitDataPng(const std::string& filePath,
                                                                      std::shared_ptr<BinaryReader> headerReader);
-    std::shared_ptr<BinaryReader> CreateBinaryReader(std::shared_ptr<File> fileToLoad,
-                                                     std::shared_ptr<ResourceInitData> initData);
     std::shared_ptr<tinyxml2::XMLDocument> CreateXMLReader(std::shared_ptr<File> fileToLoad,
                                                            std::shared_ptr<ResourceInitData> initData);
 

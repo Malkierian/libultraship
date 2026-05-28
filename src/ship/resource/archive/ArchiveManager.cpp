@@ -242,7 +242,9 @@ std::shared_ptr<Archive> ArchiveManager::AddArchive(const std::string& archivePa
 
     SPDLOG_INFO("Reading archive: {}", path.string());
 
-    if (StringHelper::IEquals(extension, ".o2r") || StringHelper::IEquals(extension, ".zip")) {
+    if (mArchiveMap.contains(extension)) {
+        archive = mArchiveMap.at(extension)(archivePath);
+    } else if (StringHelper::IEquals(extension, ".o2r") || StringHelper::IEquals(extension, ".zip")) {
         archive = dynamic_pointer_cast<Archive>(std::make_shared<O2rArchive>(archivePath));
 #ifdef INCLUDE_MPQ_SUPPORT
     } else if (StringHelper::IEquals(extension, ".otr") || StringHelper::IEquals(extension, ".mpq")) {
@@ -294,6 +296,14 @@ std::shared_ptr<Archive> ArchiveManager::AddArchive(std::shared_ptr<Archive> arc
 
 bool ArchiveManager::IsGameVersionValid(uint32_t gameVersion) {
     return mValidGameVersions.empty() || mValidGameVersions.contains(gameVersion);
+}
+
+void ArchiveManager::RegisterArchiveConstructor(const std::string& extension, ArchiveConstructor constructor) {
+    if (mArchiveMap.contains(extension)) {
+        SPDLOG_WARN("Attempting to register ArchiveConstructor for extension {} that already has one registered.");
+    } else {
+        mArchiveMap.emplace(extension, constructor);
+    }
 }
 
 } // namespace Ship

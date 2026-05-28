@@ -13,6 +13,8 @@ namespace Ship {
 struct File;
 class Archive;
 
+using ArchiveConstructor = std::shared_ptr<Archive>(*)(const std::string&);
+
 class ArchiveManager {
   public:
     ArchiveManager();
@@ -43,6 +45,7 @@ class ArchiveManager {
     const std::string* HashToString(uint64_t hash) const;
     const char* HashToCString(uint64_t hash) const;
     bool IsGameVersionValid(uint32_t gameVersion);
+    void RegisterArchiveConstructor(const std::string& extension, ArchiveConstructor constructor);
 
   protected:
     static std::vector<std::string> GetArchiveListInPaths(const std::vector<std::string>& archivePaths);
@@ -56,5 +59,6 @@ class ArchiveManager {
     std::unordered_map<uint64_t, std::string> mHashes;
     std::unordered_set<std::string> mDirectories;
     std::unordered_map<uint64_t, std::shared_ptr<Archive>> mFileToArchive;
+    std::unordered_map<std::string, ArchiveConstructor> mArchiveMap;
 };
 } // namespace Ship

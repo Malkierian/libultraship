@@ -47,7 +47,7 @@ class Archive : public std::enable_shared_from_this<Archive> {
   protected:
     void SetLoaded(bool isLoaded);
     void SetGameVersion(uint32_t gameVersion);
-    void IndexFile(const std::string& filePath);
+    virtual void IndexFile(const std::string& filePath);
 
   private:
     bool mIsLoaded;
